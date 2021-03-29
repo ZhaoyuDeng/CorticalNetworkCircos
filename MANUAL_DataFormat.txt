@@ -1,0 +1,23 @@
+MATLAB raw data structure name: 
+RawDataCircos
+
+Elements:
+(1)(cell) ElementLabel 
+COLUMN		FORMAT		CONTENT
+1		numeric		region order
+2		char		region name
+
+(2)(double) HigherOrderNetworkIndex
+COLUMN		FORMAT		CONTENT
+1		numeric		network of specific region
+
+(3)(cell) HigherOrderNetworkLabel
+COLUMN		FORMAT		CONTENT
+1		numeric		network order
+2		char		network name
+
+(4)(double) Matrix
+Matrix of magnitude of regions
+
+(5)(double) P_Corrected
+Matrix of P value of regions
