@@ -19,6 +19,7 @@ cd(working_dir);
 % define variables
 colorbar_roundn_sens = -2;
 link_transparency = 0.5;
+max_width = 1; min_width = 0.2; % normalize width parameter
 
 % define the amount of networks and regions
 region_num = length(RawDataCircos.ElementLabel);
@@ -39,7 +40,7 @@ networks = RawDataCircos.HigherOrderNetworkLabel(:,2);
 regions = RawDataCircos.ElementLabel(:,2);
 
 % generate correlation matrix for links, filter threshold
-corr_mat = RawDataCircos.P_Corrected < P_threshold; % filter the correlation matrix of regions that P less then 0.01
+corr_mat = RawDataCircos.P_Corrected < P_threshold; % filter the correlation matrix of regions that P less then P_threshold
 [cor_row,cor_col] = find(triu(corr_mat)); % withdraw upper triangle matrix
 cor_num = length(cor_row); % number of correlation
 plot_mat = zeros(length(cor_row),1); % initialize matrix that store values that plots
@@ -47,7 +48,10 @@ for k = 1:length(cor_row)
     plot_mat(k) = RawDataCircos.Matrix(cor_row(k),cor_col(k)); % store values in matrix
 end
 plot_mat_max = max(abs(min(plot_mat)),abs(max(plot_mat)));
-ratio_mat = plot_mat/roundn(plot_mat_max,colorbar_roundn_sens); % normalization, sensitivity 0.01
+ratio_mat = roundn((plot_mat/plot_mat_max),colorbar_roundn_sens); % normalization, sensitivity 0.01
+% normalize to appropriate range
+T_max = max(abs(plot_mat(:))); T_min = min(abs(plot_mat(:)));
+nor_Matrix = roundn(min_width+(max_width-min_width)*(abs(plot_mat)-T_min)/(T_max-T_min),colorbar_roundn_sens);
 
 % calculate correlation for plot
 link_index_logical = false(cor_num,cor_num);
@@ -56,7 +60,7 @@ link_width_ratio = zeros(region_num,region_num); % initialize ratio of regions' 
 for k = 1:region_num
     link_index_logical(:,k) = cor_row==k|cor_col==k;
     link_num(k) = sum(link_index_logical(:,k)); % regions' links amount
-    link_width_ratio(k,1:link_num(k)) = abs(ratio_mat(link_index_logical(:,k))');
+    link_width_ratio(k,1:link_num(k)) = nor_Matrix(link_index_logical(:,k))';
 end
 link_width_ratio_sum = sum(link_width_ratio,2); % calculate sum of ratios
 
