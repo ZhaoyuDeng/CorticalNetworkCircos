@@ -1,9 +1,13 @@
 # CorticalNetworkCircos
  Circos plot describes cortical networks and regions
 
+![DemoCircos](./circos_4mode.png)
+
+There are **4 modes** as shown above, you can choose by setting parameter.
+
 PS: recommand to use SVG image.
 
-![DemoCircos](./circos_demo.png)
+## Source code introduction:
 
 0. **CircosPlot.conf**
 

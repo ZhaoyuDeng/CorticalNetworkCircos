@@ -1,5 +1,5 @@
-function [] = CircosDataOrganize(working_dir,RawDataCircos,P_threshold,link_mode)
-% FORMAT [] = CircosDataOrganize(working_dir,RawDataCircos,P_threshold,link_mode)
+function [] = CircosDataOrganize(workingDir,RawDataCircos,P_THRESHOLD,LINK_MODE)
+% FORMAT [] = CircosDataOrganize(workingDir,RawDataCircos,P_THRESHOLD,LINK_MODE)
 % Data organization for Circos plot via the format of txt
 % Input:
 %   working_dir - working directory that generate scripts and Circos figure
@@ -14,63 +14,66 @@ function [] = CircosDataOrganize(working_dir,RawDataCircos,P_threshold,link_mode
 %__________________________________________________________________________
 %%
 % change working directory
-cd(working_dir);
+cd(workingDir);
 
 % define variables
-colorbar_roundn_sens = -2;
-link_transparency = 0.5;
-max_width = 1; min_width = 0.2; % normalize width parameter
+COLORBAR_ROUNDN_SENS = -2;
+LINK_TRANSPARENCY = 0.5; % transparency of links in plot
+MAX_WIDTH = 1; MIN_WIDTH = 0.2; % normalize width parameter
+DEFAULT_SPACING = 100;
 
 % define the amount of networks and regions
-region_num = length(RawDataCircos.ElementLabel);
-network_num = length(RawDataCircos.HigherOrderNetworkLabel(:,1));
+nRegion = length(RawDataCircos.ElementLabel); % number of regions
+nNetwork = length(RawDataCircos.HigherOrderNetworkLabel(:,1)); % number of networks
 % width of a region band
-if link_mode == 1
-    spacing = region_num; % even link width
-elseif link_mode == 2
-    spacing = 100; % ratio link width, default 100
-elseif link_mode == 3
-    spacing = []; %ratio link width varies with sum of correlation
+if LINK_MODE == 1
+    spacing = nRegion; % even link width
+elseif LINK_MODE == 2
+    spacing = DEFAULT_SPACING; % ratio link width, default 100
+elseif LINK_MODE == 3
+    spacing = []; % ratio link width varies with sum of correlation
+elseif LINK_MODE == 4
+    spacing = []; % link width varies with max sum of band link width
 end
 
 % networks and regions
-tab = tabulate(RawDataCircos.HigherOrderNetworkIndex);
-network_region_num = tab(:,2);
-networks = RawDataCircos.HigherOrderNetworkLabel(:,2);
-regions = RawDataCircos.ElementLabel(:,2);
+tabTemp = tabulate(RawDataCircos.HigherOrderNetworkIndex);
+nNetworkRegion = tabTemp(:,2);
+nameNetwork = RawDataCircos.HigherOrderNetworkLabel(:,2);
+nameRegion = RawDataCircos.ElementLabel(:,2);
 
 % generate correlation matrix for links, filter threshold
-corr_mat = RawDataCircos.P_Corrected < P_threshold; % filter the correlation matrix of regions that P less then P_threshold
-[cor_row,cor_col] = find(triu(corr_mat)); % withdraw upper triangle matrix
-cor_num = length(cor_row); % number of correlation
-plot_mat = zeros(length(cor_row),1); % initialize matrix that store values that plots
-for k = 1:length(cor_row)
-    plot_mat(k) = RawDataCircos.Matrix(cor_row(k),cor_col(k)); % store values in matrix
+matCorr = RawDataCircos.P_Corrected < P_THRESHOLD; % filter the correlation matrix of regions that P less then P_threshold
+[rowCorr,colCorr] = find(triu(matCorr)); % withdraw upper triangle matrix
+nCorr = length(rowCorr); % number of correlation pairs
+arrPlot = zeros(length(rowCorr),1); % initialize array that store values that plots
+for k = 1:length(rowCorr)
+    arrPlot(k) = RawDataCircos.Matrix(rowCorr(k),colCorr(k)); % store values in matrix
 end
-plot_mat_max = max(abs(min(plot_mat)),abs(max(plot_mat)));
-ratio_mat = roundn((plot_mat/plot_mat_max),colorbar_roundn_sens); % normalization, sensitivity 0.01
+maxabsArrPlot = max(abs(min(arrPlot)),abs(max(arrPlot)));
+arrCorRatio = roundn((arrPlot/maxabsArrPlot),COLORBAR_ROUNDN_SENS); % correlation normalization, sensitivity
 % normalize to appropriate range
-T_max = max(abs(plot_mat(:))); T_min = min(abs(plot_mat(:)));
-nor_Matrix = roundn(min_width+(max_width-min_width)*(abs(plot_mat)-T_min)/(T_max-T_min),colorbar_roundn_sens);
+maxArrPlot = max(abs(arrPlot(:))); minArrPlot = min(abs(arrPlot(:)));
+normArrPlot = roundn(MIN_WIDTH+(MAX_WIDTH-MIN_WIDTH)*(abs(arrPlot)-minArrPlot)/(maxArrPlot-minArrPlot),COLORBAR_ROUNDN_SENS);
 
 % calculate correlation for plot
-link_index_logical = false(cor_num,cor_num);
-link_num = zeros(cor_num,1); 
-link_width_ratio = zeros(region_num,region_num); % initialize ratio of regions' link width
-for k = 1:region_num
-    link_index_logical(:,k) = cor_row==k|cor_col==k;
-    link_num(k) = sum(link_index_logical(:,k)); % regions' links amount
-    link_width_ratio(k,1:link_num(k)) = nor_Matrix(link_index_logical(:,k))';
+logiMatIndexLink = false(nCorr,nCorr);
+arrLink = zeros(nRegion,1); 
+matLinkWidthRatio = zeros(nRegion,nRegion); % initialize ratio of regions' link width
+for k = 1:nRegion
+    logiMatIndexLink(:,k) = rowCorr==k|colCorr==k;
+    arrLink(k) = sum(logiMatIndexLink(:,k)); % regions' links amount
+    matLinkWidthRatio(k,1:arrLink(k)) = normArrPlot(logiMatIndexLink(:,k))';
 end
-link_width_ratio_sum = sum(link_width_ratio,2); % calculate sum of ratios
+arrRegionWidthRatio = sum(matLinkWidthRatio,2); % calculate width of regions
 
 % calculate the color of links
-color_mat = zeros(cor_num,3); % initialize matrix that store color of links
-for k = 1:length(cor_row)
-    if ratio_mat(k) > 0
-        color_mat(k,:) = fix([255,255-ratio_mat(k)*255,255-ratio_mat(k)*255]); % the bigger positive number is, the more red
+matColor = zeros(nCorr,3); % initialize matrix that store color of links
+for k = 1:length(rowCorr)
+    if arrCorRatio(k) > 0
+        matColor(k,:) = fix([255,255-arrCorRatio(k)*255,255-arrCorRatio(k)*255]); % the bigger positive number is, the more red
     else
-        color_mat(k,:) = fix([255+ratio_mat(k)*255,255+ratio_mat(k)*255,255]); % the smaller negative number is, the more blue
+        matColor(k,:) = fix([255+arrCorRatio(k)*255,255+arrCorRatio(k)*255,255]); % the smaller negative number is, the more blue
     end
 end
 
@@ -78,48 +81,61 @@ end
 % write data of networks and regions
 fid = fopen('CircosInput1_band.txt','w');
 % describe external networks, FORMAT: chr - ID label start end attribute
-if link_mode==1 || link_mode==2
+if LINK_MODE==1 || LINK_MODE==2
     % isometry band
-    for k = 1:network_num
-        fprintf(fid,'chr - %s %s ',['net',num2str(k)],cell2mat(networks(k)));
-        fprintf(fid,'%u %u %s',0,network_region_num(k)*spacing,['chr',num2str(k)]); %color may not needed
+    for k = 1:nNetwork
+        fprintf(fid,'chr - %s %s ',['net',num2str(k)],cell2mat(nameNetwork(k)));
+        fprintf(fid,'%u %u %s',0,nNetworkRegion(k)*spacing,['chr',num2str(k)]); %color may not needed
         fprintf(fid,'\n');
     end
-elseif link_mode==3
+elseif LINK_MODE==3
     % not isometry band
-    link_width_ratio100 = floor(link_width_ratio*100);
-    band_width = sum(link_width_ratio100,2);
-    band_width(band_width==0) = floor(min(band_width(band_width~=0)));
-    network_width = zeros(3,1); % initialize
-    for k = 1:network_num
-        network_width(k) = sum(band_width(RawDataCircos.HigherOrderNetworkIndex==k));
+    matLinkWidthRatio100 = floor(matLinkWidthRatio*100);
+    bandWidth = sum(matLinkWidthRatio100,2);
+    bandWidth(bandWidth==0) = floor(min(bandWidth(bandWidth~=0)));
+    network_width = zeros(3,1); % 
+    for k = 1:nNetwork
+        network_width(k) = sum(bandWidth(RawDataCircos.HigherOrderNetworkIndex==k));
     end
-    for k = 1:network_num
-        fprintf(fid,'chr - %s %s ',['net',num2str(k)],cell2mat(networks(k)));
-        fprintf(fid,'%u %u %s',0,network_width(k),['chr',num2str(k)]); %color may not needed
+    for k = 1:nNetwork
+        fprintf(fid,'chr - %s %s ',['net',num2str(k)],cell2mat(nameNetwork(k)));
+        fprintf(fid,'%u %u %s',0,network_width(k),['chr',num2str(k)]);
+        fprintf(fid,'\n');
+    end
+elseif LINK_MODE==4
+    % isometry band, width = max link width ratio
+    matLinkWidthRatio100 = floor(matLinkWidthRatio*100);
+    isoBandWidth = max(sum(matLinkWidthRatio100,2)); % initialize isometry band width
+    for k = 1:nNetwork
+        fprintf(fid,'chr - %s %s ',['net',num2str(k)],cell2mat(nameNetwork(k)));
+        fprintf(fid,'%u %u %s',0,nNetworkRegion(k)*isoBandWidth,['chr',num2str(k)]);
         fprintf(fid,'\n');
     end
 end
+
 % describe internal bands, FORMAT: band ID label label start end attribute
-if link_mode==1 || link_mode==2
+if LINK_MODE==1 || LINK_MODE==2 || LINK_MODE==4
+    if LINK_MODE==4
+        spacing = isoBandWidth;
+    end
     index = 1;
-    for k = 1:network_num
-        for l = 1:network_region_num(k)
-            fprintf(fid,'band %s %s %s ',['net',num2str(k)],cell2mat(regions(index)),cell2mat(regions(index)));
+    for k = 1:nNetwork
+        for l = 1:nNetworkRegion(k)
+            fprintf(fid,'band %s %s %s ',['net',num2str(k)],cell2mat(nameRegion(index)),cell2mat(nameRegion(index)));
             fprintf(fid,'%u %u %s',(l-1)*spacing,l*spacing,['chr',num2str(index)]);
             fprintf(fid,'\n');
             index = index + 1;
         end
     end
-elseif link_mode==3
+elseif LINK_MODE==3
     index = 1;
-    for k = 1:network_num
-        former_sum = 0;
-        for l = 1:network_region_num(k)
-            fprintf(fid,'band %s %s %s ',['net',num2str(k)],cell2mat(regions(index)),cell2mat(regions(index)));
-            fprintf(fid,'%u %u %s',former_sum,former_sum+band_width(index),['chr',num2str(index)]);
+    for k = 1:nNetwork
+        tempFormerSum = 0; % temporary record the sum of former band width
+        for l = 1:nNetworkRegion(k)
+            fprintf(fid,'band %s %s %s ',['net',num2str(k)],cell2mat(nameRegion(index)),cell2mat(nameRegion(index)));
+            fprintf(fid,'%u %u %s',tempFormerSum,tempFormerSum+bandWidth(index),['chr',num2str(index)]);
             fprintf(fid,'\n');
-            former_sum = former_sum + band_width(index);
+            tempFormerSum = tempFormerSum + bandWidth(index);
             index = index + 1;
         end
     end
@@ -129,23 +145,26 @@ fclose(fid);
 % write data of band labels
 fid = fopen('CircosInput2_label.txt','w');
 % label karyotype band, FORMAT: ID start end label
-if link_mode==1 || link_mode==2
+if LINK_MODE==1 || LINK_MODE==2 || LINK_MODE==4
+    if LINK_MODE==4
+        spacing = isoBandWidth;
+    end
     index = 1;
-    for k = 1:network_num
-        for l = 1:network_region_num(k)
-            fprintf(fid,'%s %u %u %s',['net',num2str(k)],(l-1)*spacing,l*spacing,cell2mat(regions(index)));
+    for k = 1:nNetwork
+        for l = 1:nNetworkRegion(k)
+            fprintf(fid,'%s %u %u %s',['net',num2str(k)],(l-1)*spacing,l*spacing,cell2mat(nameRegion(index)));
             fprintf(fid,'\n');
             index = index + 1;
         end
     end
-elseif link_mode==3
+elseif LINK_MODE==3
     index = 1;
-    for k = 1:network_num
-        former_sum = 0;
-        for l = 1:network_region_num(k)
-            fprintf(fid,'%s %u %u %s',['net',num2str(k)],former_sum,former_sum+band_width(index),cell2mat(regions(index)));
+    for k = 1:nNetwork
+        tempFormerSum = 0;
+        for l = 1:nNetworkRegion(k)
+            fprintf(fid,'%s %u %u %s',['net',num2str(k)],tempFormerSum,tempFormerSum+bandWidth(index),cell2mat(nameRegion(index)));
             fprintf(fid,'\n');
-            former_sum = former_sum + band_width(index);
+            tempFormerSum = tempFormerSum + bandWidth(index);
             index = index + 1;
         end
     end
@@ -155,137 +174,178 @@ fclose(fid);
 % write data of links
 fid = fopen('CircosInput3_link.txt','w'); 
 % describe links, FORMAT: Chromosome1 Start1 End1 Chromosome2 Start2 End2 Attributes
-if link_mode == 1 % even link width mode
-    for k = 1:cor_num
+if LINK_MODE == 1 % even link width mode
+    for k = 1:nCorr
         % calculate chromsome1's network and region
-        cor_row_net = RawDataCircos.HigherOrderNetworkIndex(cor_row(k));
-        cor_row_reg = cor_row(k);
-        if cor_row_net > 1
-            for l = 1:cor_row_net-1
-                cor_row_reg = cor_row_reg - network_region_num(l);
+        rowCorrNet = RawDataCircos.HigherOrderNetworkIndex(rowCorr(k));
+        rowCorrReg = rowCorr(k);
+        if rowCorrNet > 1
+            for l = 1:rowCorrNet-1
+                rowCorrReg = rowCorrReg - nNetworkRegion(l);
             end
         end
         % calculate chromsome2's network and region
-        cor_col_net = RawDataCircos.HigherOrderNetworkIndex(cor_col(k));
-        cor_col_reg = cor_col(k);
-        if cor_col_net > 1
-            for l = 1:cor_col_net-1
-                cor_col_reg = cor_col_reg - network_region_num(l);
+        colCorrNet = RawDataCircos.HigherOrderNetworkIndex(colCorr(k));
+        colCorrReg = colCorr(k);
+        if colCorrNet > 1
+            for l = 1:colCorrNet-1
+                colCorrReg = colCorrReg - nNetworkRegion(l);
             end
         end
         % calculate start and end
-        cor_row_start = (cor_row_reg-1)*spacing+(cor_col_reg-1);
-        cor_row_end = cor_row_start+1;
-        cor_col_start = (cor_col_reg-1)*spacing+(cor_row_reg-1);
-        cor_col_end = cor_col_start+1;
+        rowCorrStart = (rowCorrReg-1)*spacing+(colCorrReg-1);
+        rowCorrEnd = rowCorrStart+1;
+        colCorrStart = (colCorrReg-1)*spacing+(rowCorrReg-1);
+        colCorrEnd = colCorrStart+1;
         % print on txt according to format
-        fprintf(fid,'net%u %u %u ',cor_row_net,cor_row_start,cor_row_end);
-        fprintf(fid,'net%u %u %u ',cor_col_net,cor_col_start,cor_col_end);
-        fprintf(fid,'color=%u,%u,%u',color_mat(k,1),color_mat(k,2),color_mat(k,3));
+        fprintf(fid,'net%u %u %u ',rowCorrNet,rowCorrStart,rowCorrEnd);
+        fprintf(fid,'net%u %u %u ',colCorrNet,colCorrStart,colCorrEnd);
+        fprintf(fid,'color=%u,%u,%u',matColor(k,1),matColor(k,2),matColor(k,3));
         fprintf(fid,'\n');
     end
-elseif link_mode == 2 % ratio link width mode
-    link_width_percent = zeros(region_num,region_num);
+elseif LINK_MODE == 2 % ratio link width mode
+    matLinkWidthPercent = zeros(nRegion,nRegion);
     % normalize link width percent
-    for k = 1:region_num
-        if link_width_ratio_sum(k) ~= 0
-            link_width_percent(k,:) = floor(link_width_ratio(k,:)/link_width_ratio_sum(k)*spacing);
+    for k = 1:nRegion
+        if arrRegionWidthRatio(k) ~= 0
+            matLinkWidthPercent(k,:) = floor(matLinkWidthRatio(k,:)/arrRegionWidthRatio(k)*spacing);
             % use 'floor', sum is less than spacing(100), compensate the rest to first order
-            if sum(link_width_percent(k,:)) ~= spacing
-                link_width_percent(k,1) = link_width_percent(k,1) + (spacing - sum(link_width_percent(k,:)));
+            if sum(matLinkWidthPercent(k,:)) ~= spacing
+                matLinkWidthPercent(k,1) = matLinkWidthPercent(k,1) + (spacing - sum(matLinkWidthPercent(k,:)));
             end
         end
     end
-    link_order_ploted = zeros(region_num,1); % initialize, record ploted order
-    for k = 1:cor_num
+    arrLinkOrderPloted = zeros(nRegion,1); % initialize, record ploted order
+    for k = 1:nCorr
         % calculate chromsome1's network and region
-        cor_row_net = RawDataCircos.HigherOrderNetworkIndex(cor_row(k));
-        cor_row_reg = cor_row(k);
-        if cor_row_net > 1
-            for l = 1:cor_row_net-1
-                cor_row_reg = cor_row_reg - network_region_num(l);
+        rowCorrNet = RawDataCircos.HigherOrderNetworkIndex(rowCorr(k));
+        rowCorrReg = rowCorr(k);
+        if rowCorrNet > 1
+            for l = 1:rowCorrNet-1
+                rowCorrReg = rowCorrReg - nNetworkRegion(l);
             end
         end
         % calculate chromsome2's network and region
-        cor_col_net = RawDataCircos.HigherOrderNetworkIndex(cor_col(k));
-        cor_col_reg = cor_col(k);
-        if cor_col_net > 1
-            for l = 1:cor_col_net-1
-                cor_col_reg = cor_col_reg - network_region_num(l);
+        colCorrNet = RawDataCircos.HigherOrderNetworkIndex(colCorr(k));
+        colCorrReg = colCorr(k);
+        if colCorrNet > 1
+            for l = 1:colCorrNet-1
+                colCorrReg = colCorrReg - nNetworkRegion(l);
             end
         end
         % calculate chromsome1's start and end
-        if link_order_ploted(cor_row(k)) == 0
-            cor_row_start = (cor_row_reg-1)*spacing;
+        if arrLinkOrderPloted(rowCorr(k)) == 0
+            rowCorrStart = (rowCorrReg-1)*spacing;
         else
-            cor_row_start = (cor_row_reg-1)*spacing + sum(link_width_percent(cor_row(k),1:link_order_ploted(cor_row(k))));
+            rowCorrStart = (rowCorrReg-1)*spacing + sum(matLinkWidthPercent(rowCorr(k),1:arrLinkOrderPloted(rowCorr(k))));
         end
-        link_order_ploted(cor_row(k)) = link_order_ploted(cor_row(k)) + 1;
-        cor_row_end = cor_row_start + link_width_percent(cor_row(k),link_order_ploted(cor_row(k))) - 1;
+        arrLinkOrderPloted(rowCorr(k)) = arrLinkOrderPloted(rowCorr(k)) + 1;
+        rowCorrEnd = rowCorrStart + matLinkWidthPercent(rowCorr(k),arrLinkOrderPloted(rowCorr(k))) - 1;
         % calculate chromsome2's start and end
-        if link_order_ploted(cor_col(k)) == 0
-            cor_col_start = (cor_col_reg-1)*spacing;
+        if arrLinkOrderPloted(colCorr(k)) == 0
+            colCorrStart = (colCorrReg-1)*spacing;
         else
-            cor_col_start = (cor_col_reg-1)*spacing + sum(link_width_percent(cor_col(k),1:link_order_ploted(cor_col(k))));
+            colCorrStart = (colCorrReg-1)*spacing + sum(matLinkWidthPercent(colCorr(k),1:arrLinkOrderPloted(colCorr(k))));
         end
-        link_order_ploted(cor_col(k)) = link_order_ploted(cor_col(k)) + 1;
-        cor_col_end = cor_col_start + link_width_percent(cor_col(k),link_order_ploted(cor_col(k))) - 1;
+        arrLinkOrderPloted(colCorr(k)) = arrLinkOrderPloted(colCorr(k)) + 1;
+        colCorrEnd = colCorrStart + matLinkWidthPercent(colCorr(k),arrLinkOrderPloted(colCorr(k))) - 1;
         % print on txt according to format
-        fprintf(fid,'net%u %u %u ',cor_row_net,cor_row_start,cor_row_end);
-        fprintf(fid,'net%u %u %u ',cor_col_net,cor_col_start,cor_col_end);
-        fprintf(fid,'color=%u,%u,%u,%.1f',color_mat(k,1),color_mat(k,2),color_mat(k,3),link_transparency);
+        fprintf(fid,'net%u %u %u ',rowCorrNet,rowCorrStart,rowCorrEnd);
+        fprintf(fid,'net%u %u %u ',colCorrNet,colCorrStart,colCorrEnd);
+        fprintf(fid,'color=%u,%u,%u,%.1f',matColor(k,1),matColor(k,2),matColor(k,3),LINK_TRANSPARENCY);
         fprintf(fid,'\n');
     end
-elseif link_mode==3
-    link_order_ploted = zeros(region_num,1); % initialize, record ploted order
+elseif LINK_MODE==3
+    arrLinkOrderPloted = zeros(nRegion,1); % initialize, record ploted order
     % calculate start point of regions
-    reg_start = zeros(3,max(network_region_num)); % initialize
+    matRegStart = zeros(3,max(nNetworkRegion)); % initialize
     index = 1;
-    for k = 1:network_num
-        former_sum = 0;
-        for l = 1:network_region_num(k)
-            reg_start(k,l) = former_sum;
-            former_sum = former_sum + band_width(index);
+    for k = 1:nNetwork
+        tempFormerSum = 0;
+        for l = 1:nNetworkRegion(k)
+            matRegStart(k,l) = tempFormerSum;
+            tempFormerSum = tempFormerSum + bandWidth(index);
             index = index + 1;
         end
     end
-    for k = 1:cor_num
+    for k = 1:nCorr
         % calculate chromsome1's network and region
-        cor_row_net = RawDataCircos.HigherOrderNetworkIndex(cor_row(k));
-        cor_row_reg = cor_row(k);
-        if cor_row_net > 1
-            for l = 1:cor_row_net-1
-                cor_row_reg = cor_row_reg - network_region_num(l);
+        rowCorrNet = RawDataCircos.HigherOrderNetworkIndex(rowCorr(k));
+        rowCorrReg = rowCorr(k);
+        if rowCorrNet > 1
+            for l = 1:rowCorrNet-1
+                rowCorrReg = rowCorrReg - nNetworkRegion(l);
             end
         end
         % calculate chromsome2's network and region
-        cor_col_net = RawDataCircos.HigherOrderNetworkIndex(cor_col(k));
-        cor_col_reg = cor_col(k);
-        if cor_col_net > 1
-            for l = 1:cor_col_net-1
-                cor_col_reg = cor_col_reg - network_region_num(l);
+        colCorrNet = RawDataCircos.HigherOrderNetworkIndex(colCorr(k));
+        colCorrReg = colCorr(k);
+        if colCorrNet > 1
+            for l = 1:colCorrNet-1
+                colCorrReg = colCorrReg - nNetworkRegion(l);
             end
         end
         % calculate chromsome1's start and end
-        if link_order_ploted(cor_row(k)) == 0
-            cor_row_start = reg_start(cor_row_net,cor_row_reg);
+        if arrLinkOrderPloted(rowCorr(k)) == 0
+            rowCorrStart = matRegStart(rowCorrNet,rowCorrReg);
         else
-            cor_row_start = reg_start(cor_row_net,cor_row_reg) + sum(link_width_ratio100(cor_row(k),1:link_order_ploted(cor_row(k))));
+            rowCorrStart = matRegStart(rowCorrNet,rowCorrReg) + sum(matLinkWidthRatio100(rowCorr(k),1:arrLinkOrderPloted(rowCorr(k))));
         end
-        link_order_ploted(cor_row(k)) = link_order_ploted(cor_row(k)) + 1;
-        cor_row_end = cor_row_start + link_width_ratio100(cor_row(k),link_order_ploted(cor_row(k))) - 1;
+        arrLinkOrderPloted(rowCorr(k)) = arrLinkOrderPloted(rowCorr(k)) + 1;
+        rowCorrEnd = rowCorrStart + matLinkWidthRatio100(rowCorr(k),arrLinkOrderPloted(rowCorr(k))) - 1;
         % calculate chromsome2's start and end
-        if link_order_ploted(cor_col(k)) == 0
-            cor_col_start = reg_start(cor_col_net,cor_col_reg);
+        if arrLinkOrderPloted(colCorr(k)) == 0
+            colCorrStart = matRegStart(colCorrNet,colCorrReg);
         else
-            cor_col_start = reg_start(cor_col_net,cor_col_reg) + sum(link_width_ratio100(cor_col(k),1:link_order_ploted(cor_col(k))));
+            colCorrStart = matRegStart(colCorrNet,colCorrReg) + sum(matLinkWidthRatio100(colCorr(k),1:arrLinkOrderPloted(colCorr(k))));
         end
-        link_order_ploted(cor_col(k)) = link_order_ploted(cor_col(k)) + 1;
-        cor_col_end = cor_col_start + link_width_ratio100(cor_col(k),link_order_ploted(cor_col(k))) - 1;
+        arrLinkOrderPloted(colCorr(k)) = arrLinkOrderPloted(colCorr(k)) + 1;
+        colCorrEnd = colCorrStart + matLinkWidthRatio100(colCorr(k),arrLinkOrderPloted(colCorr(k))) - 1;
         % print on txt according to format
-        fprintf(fid,'net%u %u %u ',cor_row_net,cor_row_start,cor_row_end);
-        fprintf(fid,'net%u %u %u ',cor_col_net,cor_col_start,cor_col_end);
-        fprintf(fid,'color=%u,%u,%u,%.1f',color_mat(k,1),color_mat(k,2),color_mat(k,3),link_transparency);
+        fprintf(fid,'net%u %u %u ',rowCorrNet,rowCorrStart,rowCorrEnd);
+        fprintf(fid,'net%u %u %u ',colCorrNet,colCorrStart,colCorrEnd);
+        fprintf(fid,'color=%u,%u,%u,%.1f',matColor(k,1),matColor(k,2),matColor(k,3),LINK_TRANSPARENCY);
+        fprintf(fid,'\n');
+    end
+elseif LINK_MODE==4
+    arrLinkOrderPloted = zeros(nRegion,1); % initialize, record ploted order
+    for k = 1:nCorr
+        % calculate chromsome1's network and region
+        rowCorrNet = RawDataCircos.HigherOrderNetworkIndex(rowCorr(k));
+        rowCorrReg = rowCorr(k);
+        if rowCorrNet > 1
+            for l = 1:rowCorrNet-1
+                rowCorrReg = rowCorrReg - nNetworkRegion(l);
+            end
+        end
+        % calculate chromsome2's network and region
+        colCorrNet = RawDataCircos.HigherOrderNetworkIndex(colCorr(k));
+        colCorrReg = colCorr(k);
+        if colCorrNet > 1
+            for l = 1:colCorrNet-1
+                colCorrReg = colCorrReg - nNetworkRegion(l);
+            end
+        end
+        % calculate chromsome1's start and end
+        if arrLinkOrderPloted(rowCorr(k)) == 0
+            rowCorrStart = (rowCorrReg-1)*isoBandWidth;
+        else
+            rowCorrStart = (rowCorrReg-1)*isoBandWidth + sum(matLinkWidthRatio100(rowCorr(k),1:arrLinkOrderPloted(rowCorr(k))));
+        end
+        arrLinkOrderPloted(rowCorr(k)) = arrLinkOrderPloted(rowCorr(k)) + 1;
+        rowCorrEnd = rowCorrStart + matLinkWidthRatio100(rowCorr(k),arrLinkOrderPloted(rowCorr(k))) - 1;
+        % calculate chromsome2's start and end
+        if arrLinkOrderPloted(colCorr(k)) == 0
+            colCorrStart = (colCorrReg-1)*isoBandWidth;
+        else
+            colCorrStart = (colCorrReg-1)*isoBandWidth + sum(matLinkWidthRatio100(colCorr(k),1:arrLinkOrderPloted(colCorr(k))));
+        end
+        arrLinkOrderPloted(colCorr(k)) = arrLinkOrderPloted(colCorr(k)) + 1;
+        colCorrEnd = colCorrStart + matLinkWidthRatio100(colCorr(k),arrLinkOrderPloted(colCorr(k))) - 1;
+        % print on txt according to format
+        fprintf(fid,'net%u %u %u ',rowCorrNet,rowCorrStart,rowCorrEnd);
+        fprintf(fid,'net%u %u %u ',colCorrNet,colCorrStart,colCorrEnd);
+        fprintf(fid,'color=%u,%u,%u,%.1f',matColor(k,1),matColor(k,2),matColor(k,3),LINK_TRANSPARENCY);
         fprintf(fid,'\n');
     end
 end

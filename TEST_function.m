@@ -4,12 +4,12 @@ clc;clear;
 % load raw data
 load('RawDataCircos.mat');
 % define variables
-working_dir = pwd;
-P_threshold = 0.005;
-link_mode = 3;
+workingDir = pwd;
+P_THRESHOLD = 0.005;
+LINK_MODE = 4;
 
 % test function
-CircosDataOrganize(working_dir,RawDataCircos,P_threshold,link_mode)
+CircosDataOrganize(workingDir,RawDataCircos,P_THRESHOLD,LINK_MODE)
 
 
 % run Circos command, if need run Matlab in Terminal
