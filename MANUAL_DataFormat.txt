@@ -2,22 +2,28 @@ MATLAB raw data structure name:
 RawDataCircos
 
 Elements:
-(1)(cell) ElementLabel 
-COLUMN		FORMAT		CONTENT
-1		numeric		region order
-2		char		region name
 
-(2)(double) HigherOrderNetworkIndex
-COLUMN		FORMAT		CONTENT
-1		numeric		network of specific region
-
-(3)(cell) HigherOrderNetworkLabel
+(1)(cell) HigherOrderNetworkLabel
 COLUMN		FORMAT		CONTENT
 1		numeric		network order
 2		char		network name
 
-(4)(double) Matrix
-Matrix of magnitude of regions
+(2)(double) procMatrix
+Processed matrix of magnitude of regions, specifically, if 0, don't need to plot links
 
-(5)(double) P_Corrected
-Matrix of P value of regions
+(3)(double) presetBoundry
+[min,max]
+
+
+
+Elements below may not needed:
+
+(3)(cell) ElementLabel 
+COLUMN		FORMAT		CONTENT
+1		numeric		region order
+2		char		region name
+
+
+(4)(double) HigherOrderNetworkIndex
+COLUMN		FORMAT		CONTENT
+1		numeric		network of specific region

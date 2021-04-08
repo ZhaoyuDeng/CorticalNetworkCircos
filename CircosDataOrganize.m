@@ -1,54 +1,61 @@
-function [] = CircosDataOrganize(workingDir,RawDataCircos,P_THRESHOLD,LINK_MODE)
-% FORMAT [] = CircosDataOrganize(workingDir,RawDataCircos,P_THRESHOLD,LINK_MODE)
+function [fileFullPath1,fileFullPath2,fileFullPath3] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
+% FORMAT [fileFullPath1,fileFullPath2,fileFullPath3] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
 % Data organization for Circos plot via the format of txt
 % Input:
-%   working_dir - working directory that generate scripts and Circos figure
+%   workingDir - working directory that generate scripts and Circos figure
 %   RawDataCircos - raw data according to format that manual defined
-%   P_threshold - threshold of P value, to filter
-%   colorbar_roundn_sens - sensitivity of colorbar range
-%   link_mode - select link mode: 1-even link width, 2-ratio link width
+%   LINK_MODE - select link mode: 
+%    1-even region and link width, 
+%    2-even region width, ratio link width, 
+%    3-even region width, ratio link width,
+%    4-even region wodth, absolute link width
 %__________________________________________________________________________
-% Written by DENG Zhao-Yu 210322 for DPARBI.
+% Written by DENG Zhao-Yu 210408 for DPARBI.
 % Institute of Psychology, Chinese Academy of Sciences
 % dengzy@psych.ac.cn
 %__________________________________________________________________________
 %%
+
 % change working directory
 cd(workingDir);
 
 % define variables
+% P_THRESHOLD = 0.005; % default threshold for P value
 COLORBAR_ROUNDN_SENS = -2;
-LINK_TRANSPARENCY = 0.5; % transparency of links in plot
+LINK_TRANSPARENCY = 0.3; % transparency of links in plot!!PNG vs SVG complementary
 MAX_WIDTH = 1; MIN_WIDTH = 0.2; % normalize width parameter
 DEFAULT_SPACING = 100;
 
 % define the amount of networks and regions
-nRegion = length(RawDataCircos.ElementLabel); % number of regions
-nNetwork = length(RawDataCircos.HigherOrderNetworkLabel(:,1)); % number of networks
-% width of a region band
-if LINK_MODE == 1
-    spacing = nRegion; % even link width
-elseif LINK_MODE == 2
-    spacing = DEFAULT_SPACING; % ratio link width, default 100
-elseif LINK_MODE == 3
-    spacing = []; % ratio link width varies with sum of correlation
-elseif LINK_MODE == 4
-    spacing = []; % link width varies with max sum of band link width
-end
-
+nRegion = length(RawDataCircos.procMatrix(:,1)); % number of regions
+nNetwork = max(RawDataCircos.HigherOrderNetworkIndex); % number of networks
 % networks and regions
 tabTemp = tabulate(RawDataCircos.HigherOrderNetworkIndex);
 nNetworkRegion = tabTemp(:,2);
-nameNetwork = RawDataCircos.HigherOrderNetworkLabel(:,2);
-nameRegion = RawDataCircos.ElementLabel(:,2);
+
+% if no label information, set them default
+if isfield(RawDataCircos,'HigherOrderNetworkLabel') && isfield(RawDataCircos,'ElementLabel')
+    nameNetwork = RawDataCircos.HigherOrderNetworkLabel(:,2);
+    nameRegion = RawDataCircos.ElementLabel(:,2);
+else
+    nameNetwork = cell(nNetwork,1);
+    for k = 1:nNetwork
+        nameNetwork(k) = cellstr(strcat('n',num2str(k)));
+    end
+    nameRegion = cell(nRegion,1);
+    for k = 1:nRegion
+        nameRegion(k) = cellstr(strcat('r',num2str(k)));
+    end
+end
+
 
 % generate correlation matrix for links, filter threshold
-matCorr = RawDataCircos.P_Corrected < P_THRESHOLD; % filter the correlation matrix of regions that P less then P_threshold
-[rowCorr,colCorr] = find(triu(matCorr)); % withdraw upper triangle matrix
+% matCorr = RawDataCircos.P_Corrected < P_THRESHOLD; 
+[rowCorr,colCorr] = find(triu(RawDataCircos.procMatrix~=0)); % withdraw upper triangle matrix
 nCorr = length(rowCorr); % number of correlation pairs
 arrPlot = zeros(length(rowCorr),1); % initialize array that store values that plots
 for k = 1:length(rowCorr)
-    arrPlot(k) = RawDataCircos.Matrix(rowCorr(k),colCorr(k)); % store values in matrix
+    arrPlot(k) = RawDataCircos.procMatrix(rowCorr(k),colCorr(k)); % store values in matrix
 end
 maxabsArrPlot = max(abs(min(arrPlot)),abs(max(arrPlot)));
 arrCorRatio = roundn((arrPlot/maxabsArrPlot),COLORBAR_ROUNDN_SENS); % correlation normalization, sensitivity
@@ -67,19 +74,43 @@ for k = 1:nRegion
 end
 arrRegionWidthRatio = sum(matLinkWidthRatio,2); % calculate width of regions
 
-% calculate the color of links
+% load colormap file
+load('cmap.mat','cmap');
+nCmap = length(cmap);
+if isfield(RawDataCircos,'presetBoundry')
+    minArrPlot = RawDataCircos.presetBoundry(1);
+    maxArrPlot = RawDataCircos.presetBoundry(2);
+end
+% select the color of links in colormap
 matColor = zeros(nCorr,3); % initialize matrix that store color of links
-for k = 1:length(rowCorr)
+cmapArrCorr = zeros(nCorr,1);
+norArrCorRatio = zeros(nCorr,1);
+for k = 1:nCorr
     if arrCorRatio(k) > 0
-        matColor(k,:) = fix([255,255-arrCorRatio(k)*255,255-arrCorRatio(k)*255]); % the bigger positive number is, the more red
+        norArrCorRatio(k) = (arrPlot(k)-minArrPlot)/(maxArrPlot-minArrPlot);
+        cmapArrCorr(k) = fix(norArrCorRatio(k)*(nCmap/2))+(nCmap/2);
     else
-        matColor(k,:) = fix([255+arrCorRatio(k)*255,255+arrCorRatio(k)*255,255]); % the smaller negative number is, the more blue
+        norArrCorRatio(k) = (arrPlot(k)+minArrPlot)/(maxArrPlot-minArrPlot);
+        cmapArrCorr(k) = (nCmap/2)+fix(norArrCorRatio(k)*(nCmap/2))+1;
     end
+    matColor(k,:) = fix(cmap(cmapArrCorr(k),:)*255);
+end
+
+% define width of a region band
+if LINK_MODE == 1 % even region and link width
+    spacing = nRegion;
+elseif LINK_MODE == 2 % even region width, ratio link width
+    spacing = DEFAULT_SPACING;
+elseif LINK_MODE == 3 % region width is sum of whose links, absolute link width
+    spacing = []; 
+elseif LINK_MODE == 4 % even region wodth, absolute link width
+    spacing = [];
 end
 
 
 % write data of networks and regions
-fid = fopen('CircosInput1_band.txt','w');
+fileFullPath1 = strcat(workingDir,'/','CircosInput1_band.txt');
+fid = fopen(fileFullPath1,'w');
 % describe external networks, FORMAT: chr - ID label start end attribute
 if LINK_MODE==1 || LINK_MODE==2
     % isometry band
@@ -93,7 +124,7 @@ elseif LINK_MODE==3
     matLinkWidthRatio100 = floor(matLinkWidthRatio*100);
     bandWidth = sum(matLinkWidthRatio100,2);
     bandWidth(bandWidth==0) = floor(min(bandWidth(bandWidth~=0)));
-    network_width = zeros(3,1); % 
+    network_width = zeros(3,1);
     for k = 1:nNetwork
         network_width(k) = sum(bandWidth(RawDataCircos.HigherOrderNetworkIndex==k));
     end
@@ -143,7 +174,8 @@ end
 fclose(fid);
 
 % write data of band labels
-fid = fopen('CircosInput2_label.txt','w');
+fileFullPath2 = strcat(workingDir,'/','CircosInput2_label.txt');
+fid = fopen(fileFullPath2,'w');
 % label karyotype band, FORMAT: ID start end label
 if LINK_MODE==1 || LINK_MODE==2 || LINK_MODE==4
     if LINK_MODE==4
@@ -172,7 +204,8 @@ end
 fclose(fid);
 
 % write data of links
-fid = fopen('CircosInput3_link.txt','w'); 
+fileFullPath3 = strcat(workingDir,'/','CircosInput3_link.txt');
+fid = fopen(fileFullPath3,'w'); 
 % describe links, FORMAT: Chromosome1 Start1 End1 Chromosome2 Start2 End2 Attributes
 if LINK_MODE == 1 % even link width mode
     for k = 1:nCorr
@@ -350,5 +383,6 @@ elseif LINK_MODE==4
     end
 end
 fclose(fid);
+
 
 

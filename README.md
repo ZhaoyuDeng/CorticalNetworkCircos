@@ -3,9 +3,13 @@
 
 ![DemoCircos](./circos_4mode.png)
 
+![colormap_jet](/Users/rfmrilab/Downloads/colormap_jet.png)
+
 There are **4 modes** as shown above, you can choose by setting parameter.
 
-PS: recommand to use SVG image.
+Using colormap shown above.
+
+PS: recommand using SVG image.
 
 ## Source code introduction:
 
@@ -17,32 +21,37 @@ Configuration file conducts Circos to plot.
 
 MATLAB function for organize data to satisfy Circos source txt file format, and define details of cortical map.
 
-2. **TEST_function.m**
+2. **EditConf.m**
+
+Configure Circos' .conf file.
+
+3. **TEST_function.m**
 
 Script demostrates how to set parameter of function.
 
-3. **CircosInput1_band.txt**
+4. **CircosInput1_band.txt**
 
 File stores data of external network and internal region band.
 
-4. **CircosInput2_label.txt**
+5. **CircosInput2_label.txt**
 
 File stores data of internal band label.
 
-5. **CircosInpput3_link.txt**
+6. **CircosInpput3_link.txt**
 
 File stores data of links between correlated regions
 
-6. **MANUAL_DataFormat.txt**
+7. **MANUAL_DataFormat.txt**
 
 Manual demostrate data format of source mat file.
 
-7. **RawDataCircos.mat**
+8. **RawDataCircos.mat**
 
 Demo source data, can immitate format.
 
+9. **cmap.mat**
+
+Store colormap.
+
 ---
 
-NOT USED FILES:
-
-cort_color.conf
