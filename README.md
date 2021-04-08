@@ -3,7 +3,7 @@
 
 ![DemoCircos](./circos_4mode.png)
 
-![colormap_jet](/Users/rfmrilab/Downloads/colormap_jet.png)
+![colormap_jet](https://ww2.mathworks.cn/help/releases/R2020a/matlab/ref/colormap_jet_zh_CN.png)
 
 There are **4 modes** as shown above, you can choose by setting parameter.
 
