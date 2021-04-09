@@ -27,3 +27,6 @@ COLUMN		FORMAT		CONTENT
 (4)(double) HigherOrderNetworkIndex
 COLUMN		FORMAT		CONTENT
 1		numeric		network of specific region
+
+(5)(doubel) camp
+Colormap in link and colorbar

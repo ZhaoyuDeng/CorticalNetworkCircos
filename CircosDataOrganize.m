@@ -75,7 +75,11 @@ end
 arrRegionWidthRatio = sum(matLinkWidthRatio,2); % calculate width of regions
 
 % load colormap file
-load('cmap.mat','cmap');
+if isfield(RawDataCircos,'cmap')
+    cmap = RawDataCircos.cmap;
+else
+    load('cmap.mat','cmap');
+end
 nCmap = length(cmap);
 if isfield(RawDataCircos,'presetBoundry')
     minArrPlot = RawDataCircos.presetBoundry(1);
