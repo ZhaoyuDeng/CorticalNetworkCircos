@@ -1,5 +1,5 @@
-function confFullPath = EditConf(workingDir,command)
-% FORMAT confFullPath = EditConf(workingDir,command)
+function filePathConf = EditConf(workingDir,command)
+% FORMAT filePathConf = EditConf(workingDir,command)
 % Set .conf configuration file, parameters
 % Input:
 %   working_dir - working directory that generate scripts and Circos figure
@@ -13,8 +13,8 @@ function confFullPath = EditConf(workingDir,command)
 % change working directory
 cd(workingDir);
 
-confFullPath = strcat(workingDir,'/CircosPlot.conf');
-fid = fopen(confFullPath,'w');
+filePathConf = strcat(workingDir,'/CircosPlot.conf');
+fid = fopen(filePathConf,'w');
 
 fprintf(fid,'karyotype = CircosInput1_band.txt \n');
 fprintf(fid,'dir   = . \n');

@@ -1,14 +1,28 @@
-function [fileFullPath1,fileFullPath2,fileFullPath3] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
-% FORMAT [fileFullPath1,fileFullPath2,fileFullPath3] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
+function [filePathBand,filePathLabel,filePathLink] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
+% FORMAT [filePathBand,filePathLabel,filePathLink] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE)
 % Data organization for Circos plot via the format of txt
+% ATTENTION: this program temporary support up to 24 regions
+%
 % Input:
 %   workingDir - working directory that generate scripts and Circos figure
 %   RawDataCircos - raw data according to format that manual defined
+%     (MUST HAVE):
+%       .HigherOrderNetworkIndex - identify networks of corresponding regions
+%       .ProcMatrix - processed matrix of magnitude of regions correlation
+%       .CmapLimit - consist of colormap limit 
+%     (NOT MUST HAVE):
+%       .ElementLabel - Identify regions' order and label
+%       .HigherOrderNetworkLabel - Identify networks' order and label
+%       .ColorMap - consist of customized color map in RGB
 %   LINK_MODE - select link mode: 
-%    1-even region and link width, 
-%    2-even region width, ratio link width, 
-%    3-even region width, ratio link width,
-%    4-even region wodth, absolute link width
+%     1-even region and link width, 
+%     2-even region width, ratio link width, 
+%     3-even region width, ratio link width,
+%     4-even region wodth, absolute link width
+% Output:
+%   filePathBand - 1st txt file contains band information
+%   filePathLabel - 2nd txt file contains label information
+%   filePathLink - 3rd txt file contains link information
 %__________________________________________________________________________
 % Written by DENG Zhao-Yu 210408 for DPARBI.
 % Institute of Psychology, Chinese Academy of Sciences
@@ -27,7 +41,7 @@ MAX_WIDTH = 1; MIN_WIDTH = 0.2; % normalize width parameter
 DEFAULT_SPACING = 100;
 
 % define the amount of networks and regions
-nRegion = length(RawDataCircos.procMatrix(:,1)); % number of regions
+nRegion = length(RawDataCircos.ProcMatrix(:,1)); % number of regions
 nNetwork = max(RawDataCircos.HigherOrderNetworkIndex); % number of networks
 % networks and regions
 tabTemp = tabulate(RawDataCircos.HigherOrderNetworkIndex);
@@ -51,11 +65,11 @@ end
 
 % generate correlation matrix for links, filter threshold
 % matCorr = RawDataCircos.P_Corrected < P_THRESHOLD; 
-[rowCorr,colCorr] = find(triu(RawDataCircos.procMatrix~=0)); % withdraw upper triangle matrix
+[rowCorr,colCorr] = find(triu(RawDataCircos.ProcMatrix~=0)); % withdraw upper triangle matrix
 nCorr = length(rowCorr); % number of correlation pairs
 arrPlot = zeros(length(rowCorr),1); % initialize array that store values that plots
 for k = 1:length(rowCorr)
-    arrPlot(k) = RawDataCircos.procMatrix(rowCorr(k),colCorr(k)); % store values in matrix
+    arrPlot(k) = RawDataCircos.ProcMatrix(rowCorr(k),colCorr(k)); % store values in matrix
 end
 maxabsArrPlot = max(abs(min(arrPlot)),abs(max(arrPlot)));
 arrCorRatio = roundn((arrPlot/maxabsArrPlot),COLORBAR_ROUNDN_SENS); % correlation normalization, sensitivity
@@ -75,27 +89,35 @@ end
 arrRegionWidthRatio = sum(matLinkWidthRatio,2); % calculate width of regions
 
 % load colormap file
-if isfield(RawDataCircos,'cmap')
-    cmap = RawDataCircos.cmap;
+if isfield(RawDataCircos,'ColorMap')
+    cmap = RawDataCircos.ColorMap;
 else
     load('cmap.mat','cmap');
 end
 nCmap = length(cmap);
-if isfield(RawDataCircos,'presetBoundry')
-    minArrPlot = RawDataCircos.presetBoundry(1);
-    maxArrPlot = RawDataCircos.presetBoundry(2);
+% set 4 matrix limit
+if isfield(RawDataCircos,'CmapLimit')
+    leftMinLimit = RawDataCircos.CmapLimit(1,1);
+    leftMaxLimit = RawDataCircos.CmapLimit(1,2);
+    rightMinLimit = RawDataCircos.CmapLimit(2,1);
+    rightMaxLimit = RawDataCircos.CmapLimit(2,2);
+else
+    leftMinLimit = min(arrPlot(arrPlot<0));
+    leftMaxLimit = max(arrPlot(arrPlot<0));
+    rightMinLimit = min(arrPlot(arrPlot>0));
+    rightMaxLimit = max(arrPlot(arrPlot>0));
 end
 % select the color of links in colormap
 matColor = zeros(nCorr,3); % initialize matrix that store color of links
 cmapArrCorr = zeros(nCorr,1);
 norArrCorRatio = zeros(nCorr,1);
 for k = 1:nCorr
-    if arrCorRatio(k) > 0
-        norArrCorRatio(k) = (arrPlot(k)-minArrPlot)/(maxArrPlot-minArrPlot);
+    if arrCorRatio(k) < 0
+        norArrCorRatio(k) = (arrPlot(k)-leftMaxLimit)/(leftMaxLimit-leftMinLimit);
+        cmapArrCorr(k) = fix(norArrCorRatio(k)*(nCmap/2))+(nCmap/2)+1;
+    elseif arrCorRatio(k) > 0
+        norArrCorRatio(k) = (arrPlot(k)-rightMinLimit)/(rightMaxLimit-rightMinLimit);
         cmapArrCorr(k) = fix(norArrCorRatio(k)*(nCmap/2))+(nCmap/2);
-    else
-        norArrCorRatio(k) = (arrPlot(k)+minArrPlot)/(maxArrPlot-minArrPlot);
-        cmapArrCorr(k) = (nCmap/2)+fix(norArrCorRatio(k)*(nCmap/2))+1;
     end
     matColor(k,:) = fix(cmap(cmapArrCorr(k),:)*255);
 end
@@ -113,8 +135,8 @@ end
 
 
 % write data of networks and regions
-fileFullPath1 = strcat(workingDir,'/','CircosInput1_band.txt');
-fid = fopen(fileFullPath1,'w');
+filePathBand = strcat(workingDir,'/','CircosInput1_band.txt');
+fid = fopen(filePathBand,'w');
 % describe external networks, FORMAT: chr - ID label start end attribute
 if LINK_MODE==1 || LINK_MODE==2
     % isometry band
@@ -178,8 +200,8 @@ end
 fclose(fid);
 
 % write data of band labels
-fileFullPath2 = strcat(workingDir,'/','CircosInput2_label.txt');
-fid = fopen(fileFullPath2,'w');
+filePathLabel = strcat(workingDir,'/','CircosInput2_label.txt');
+fid = fopen(filePathLabel,'w');
 % label karyotype band, FORMAT: ID start end label
 if LINK_MODE==1 || LINK_MODE==2 || LINK_MODE==4
     if LINK_MODE==4
@@ -208,8 +230,8 @@ end
 fclose(fid);
 
 % write data of links
-fileFullPath3 = strcat(workingDir,'/','CircosInput3_link.txt');
-fid = fopen(fileFullPath3,'w'); 
+filePathLink = strcat(workingDir,'/','CircosInput3_link.txt');
+fid = fopen(filePathLink,'w'); 
 % describe links, FORMAT: Chromosome1 Start1 End1 Chromosome2 Start2 End2 Attributes
 if LINK_MODE == 1 % even link width mode
     for k = 1:nCorr

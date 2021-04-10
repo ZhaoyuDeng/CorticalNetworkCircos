@@ -1,7 +1,7 @@
 # CorticalNetworkCircos
  Circos plot describes cortical networks and regions
 
-![DemoCircos](./circos_4mode.png)
+![DemoCircos](./CircosDemoOutput/circos_4mode.png)
 
 ![colormap_jet](https://ww2.mathworks.cn/help/releases/R2020a/matlab/ref/colormap_jet_zh_CN.png)
 
