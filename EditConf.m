@@ -1,4 +1,4 @@
-function filePathConf = EditConf(workingDir,command)
+function filePathConf = EditConf(workingDir,flag)
 % FORMAT filePathConf = EditConf(workingDir,command)
 % Set .conf configuration file, parameters
 % Input:
@@ -29,7 +29,7 @@ fprintf(fid,'radius    = 0.8r \n');
 fprintf(fid,'thickness = 40p \n');
 fprintf(fid,'fill      = yes \n');
 % show external labels
-if find(command=='L')
+if find(flag=='L')
 else
     fprintf(fid,'show_label       = yes \n');
     fprintf(fid,'label_font       = bold \n');
@@ -46,7 +46,7 @@ fprintf(fid,'band_stroke_color     = white \n');
 fprintf(fid,'band_transparency = 4 \n');
 fprintf(fid,'</ideogram> \n');
 % show internal labels
-if find(command=='L')
+if find(flag=='L')
 else
     fprintf(fid,'<plots> \n');
     fprintf(fid,'<plot> \n');
@@ -67,7 +67,7 @@ else
     fprintf(fid,'</plots> \n');
 end
 % show ticks, hierarchical
-if find(command=='T')
+if find(flag=='T')
 else
     fprintf(fid,'show_ticks          = yes \n');
     fprintf(fid,'<ticks> \n');

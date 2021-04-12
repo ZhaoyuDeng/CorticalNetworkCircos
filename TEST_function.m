@@ -7,17 +7,18 @@ load('RawDataCircos.mat');
 workingDir = pwd;
 LINK_MODE = 4;
 % check existence of labels
-if isfield(RawDataCircos,'HigherOrderNetworkLabel') && isfield(RawDataCircos,'ElementLabel')
-    command = '';
+if (isfield(RawDataCircos,'HigherOrderNetworkLabel') || isempty(RawDataCircos.HigherOrderNetworkLabel)) && (isfield(RawDataCircos,'ElementLabel') || isempty(RawDataCircos.ElementLabel))
+    flag = '';
 else
-    command = 'LT';
+    flag = 'LT';
 end
 
 % test function
 [filePathBand,filePathLabel,filePathLink] = CircosDataOrganize(workingDir,RawDataCircos,LINK_MODE);
-filePathConf = EditConf(workingDir,command);
+filePathConf = EditConf(workingDir,flag);
 
 
 % run Circos command, if need run Matlab in Terminal
-system('circos -conf CircosPlot.conf');
+str = ['circos -conf ',workingDir,filesep,'CircosPlot.conf'];
+system(str);
 

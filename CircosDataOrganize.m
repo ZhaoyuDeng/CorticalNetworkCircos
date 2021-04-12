@@ -48,7 +48,7 @@ tabTemp = tabulate(RawDataCircos.HigherOrderNetworkIndex);
 nNetworkRegion = tabTemp(:,2);
 
 % if no label information, set them default
-if isfield(RawDataCircos,'HigherOrderNetworkLabel') && isfield(RawDataCircos,'ElementLabel')
+if (isfield(RawDataCircos,'HigherOrderNetworkLabel') || isempty(RawDataCircos.HigherOrderNetworkLabel)) && (isfield(RawDataCircos,'ElementLabel') || isempty(RawDataCircos.ElementLabel))
     nameNetwork = RawDataCircos.HigherOrderNetworkLabel(:,2);
     nameRegion = RawDataCircos.ElementLabel(:,2);
 else
@@ -135,7 +135,7 @@ end
 
 
 % write data of networks and regions
-filePathBand = strcat(workingDir,'/','CircosInput1_band.txt');
+filePathBand = strcat(workingDir,filesep,'CircosInput1_band.txt');
 fid = fopen(filePathBand,'w');
 % describe external networks, FORMAT: chr - ID label start end attribute
 if LINK_MODE==1 || LINK_MODE==2
@@ -200,7 +200,7 @@ end
 fclose(fid);
 
 % write data of band labels
-filePathLabel = strcat(workingDir,'/','CircosInput2_label.txt');
+filePathLabel = strcat(workingDir,filesep,'CircosInput2_label.txt');
 fid = fopen(filePathLabel,'w');
 % label karyotype band, FORMAT: ID start end label
 if LINK_MODE==1 || LINK_MODE==2 || LINK_MODE==4
@@ -230,7 +230,7 @@ end
 fclose(fid);
 
 % write data of links
-filePathLink = strcat(workingDir,'/','CircosInput3_link.txt');
+filePathLink = strcat(workingDir,filesep,'CircosInput3_link.txt');
 fid = fopen(filePathLink,'w'); 
 % describe links, FORMAT: Chromosome1 Start1 End1 Chromosome2 Start2 End2 Attributes
 if LINK_MODE == 1 % even link width mode
