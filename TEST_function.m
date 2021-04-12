@@ -19,6 +19,5 @@ filePathConf = EditConf(workingDir,flag);
 
 
 % run Circos command, if need run Matlab in Terminal
-str = ['circos -conf ',workingDir,filesep,'CircosPlot.conf'];
-system(str);
+system(['circos -conf ',workingDir,filesep,'CircosPlot.conf']);
 
